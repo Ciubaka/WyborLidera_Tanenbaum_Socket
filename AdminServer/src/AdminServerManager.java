@@ -5,6 +5,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Vector;
 import java.util.concurrent.TimeUnit;
@@ -16,6 +17,11 @@ public class AdminServerManager implements Runnable, Serializable{
     private InetAddress _IP_ADMIN;
     private LinkedHashSet<Clients> _clientsList = new LinkedHashSet<>();
     private LinkedHashSet<Serwers> _serwersList = new LinkedHashSet<>();
+
+    private LinkedList<Clients> _clientsList1 = new LinkedList<>();
+    private LinkedList<Serwers> _serwersList1 = new LinkedList<>();
+
+
     private Vector<Socket> _clients = new Vector<Socket>();
     private Vector<ClientHandler> _clientHandlers = new Vector<ClientHandler>();
     private Thread thread;
@@ -55,8 +61,10 @@ public class AdminServerManager implements Runnable, Serializable{
                  */
                 _serwersList.add(new Serwers(ipServer, portServer));
                _clientsList.add(new Clients(client.getInetAddress().getHostAddress(), client.getPort(), priority));
+               ////////////_clientsList1.add(new Clients(client.getInetAddress().getHostAddress(), client.getPort(), priority));
                _clients.add(client);
                 logServer("Liczba serwerów: " + _serwersList.size() + "\nLiczba klientów: " + _clientsList.size() + "\nLiczba socketów: " + _clients.size() );
+
                 ClientHandler clientHandler = new ClientHandler(client);
                 _clientHandlers.add(clientHandler);
                 //new Thread(clientHandler).start();

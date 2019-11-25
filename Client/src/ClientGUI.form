@@ -233,7 +233,7 @@
             </constraints>
             <properties>
               <font size="16" style="1"/>
-              <text value="Rozpocznij elekcję"/>
+              <text value="Pierwsza elekcja"/>
             </properties>
           </component>
           <grid id="eb9ac" binding="leaderPanel" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">

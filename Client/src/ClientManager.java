@@ -5,16 +5,22 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.sql.Time;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
 
 public class ClientManager implements Runnable, Serializable{
 
     private static final String CONNECTION = "CONNECTION";
-    private static final String DISCONNECT = "DISCONNECT";
+    private static final String DISCONNECT_FROM_CLIENT = "DISCONNECT_FROM_CLIENT";
+    private static final String DISCONNECT_FROM_SERWER = "DISCONNECT_FROM_SERWER";
     private static final String CONNECTION_CONFIRM = "CONNECTION_CONFIRM";
     private static final String PING = "PING";
     private static final String PING_CONFIRM = "PING_CONFIRM";
+    private static final String ELECTION = "ELECTION";
+    private static int _PRIORITY = 0;
+    private boolean disconnectFlag = false;
 
     private PrintWriter outSerwer;
     private BufferedReader inSerwer;
@@ -29,11 +35,18 @@ public class ClientManager implements Runnable, Serializable{
     PrintWriter outAdmin;
     public String info;
 
+    public boolean running = true;
+
 
 
 
     protected LinkedHashSet<Clients> _clientsList = new LinkedHashSet<>();
     protected LinkedHashSet<Serwers> _serwersList = new LinkedHashSet<>();
+
+    protected LinkedList<Serwers> lista = new LinkedList<>();
+
+
+
     private boolean isAdmin;
     private JTextArea _loggerArea;
 
@@ -51,6 +64,9 @@ public class ClientManager implements Runnable, Serializable{
         outAdmin.println(PORT_SERWER);
         outAdmin.println(IP_SERWER);
         inObjClientAdmin = new ObjectInputStream(clientAdmin.getInputStream());
+
+
+        _PRIORITY = PRIORITY;
 
         /**
          * DO SERWERA=CLIENTA
@@ -82,11 +98,12 @@ public class ClientManager implements Runnable, Serializable{
                 e.printStackTrace();
             }
                 System.out.println("Liczba serweow: " + serwery.size() + " l. klientow: " + klienci.size());
+
             if(serwery.size() > 0 && klienci.size() > 0) {
                 _serwersList.addAll(serwery);
                 _clientsList.addAll(klienci);
             }
-                System.out.println(_serwersList.size());
+            System.out.println(_serwersList.size());
             System.out.println(_clientsList.size());
 
             outAdmin.println("OTRZYMALEM");
@@ -96,45 +113,86 @@ public class ClientManager implements Runnable, Serializable{
         else
         {
             outSerwer.println(CONNECTION);
-
-            while (true){
+            outSerwer.println(_PRIORITY);
+            while (running){
                 try {
                 info = inSerwer.readLine();
                 TimeUnit.SECONDS.sleep(4);
-                    switch (info)
-                    {
-                        case CONNECTION_CONFIRM:
-                            logClient(CONNECTION_CONFIRM);
-                            TimeUnit.SECONDS.sleep(4);
-                            outSerwer.println(PING);
-                            break;
-                        case PING_CONFIRM:
-                            logClient(PING_CONFIRM);
-                            TimeUnit.SECONDS.sleep(4);
-                            outSerwer.println(PING);
-                            //outSerwer.println(DISCONNECT);
-                            break;
-                        case DISCONNECT:
-                            logClient(DISCONNECT);
-                            TimeUnit.SECONDS.sleep(4);
-                            //create method with tanenbaum algoritm
-                            startElection();
-                            break;
+                    if(disconnectFlag)
+                        info = DISCONNECT_FROM_CLIENT;
 
-                        default:
-                            logClient("ZLE");
-                            break;
-                    }
+                        switch (info) {
+                            case CONNECTION_CONFIRM:
+                                logClient(CONNECTION_CONFIRM);
+                                TimeUnit.SECONDS.sleep(4);
+                                outSerwer.println(PING);
+                                break;
+                            case PING_CONFIRM:
+                                logClient(PING_CONFIRM);
+                                TimeUnit.SECONDS.sleep(4);
+
+                                String tmp = inSerwer.readLine();
+                                if (tmp.equals("NIC"))
+                                    outSerwer.println(PING);
+                                else {
+                                    outSerwer.println(PING);
+                                    command(tmp);
+                                }
+                                //outSerwer.println(DISCONNECT);
+                                break;
+                            case DISCONNECT_FROM_CLIENT:
+                                logClient(DISCONNECT_FROM_CLIENT);
+                                outSerwer.println(DISCONNECT_FROM_CLIENT);
+                                inSerwer.close();
+                                outSerwer.close();
+                                clientSerwer.close();
+                                running = false;
+                                break;
+
+
+                            case DISCONNECT_FROM_SERWER:
+                                logClient(DISCONNECT_FROM_SERWER);
+                                throw new IOException();
+
+
+                            default:
+                                logClient("ZLE");
+                                break;
+                        }
+
 
 
                 } catch (IOException | InterruptedException e) {
-                    e.printStackTrace();
+                    running = false;
+                    logClient(clientSerwer.isClosed());
+                    try {
+                            inSerwer.close();
+                            outSerwer.close();
+                            clientSerwer.close();
+
+                            logClient(clientSerwer.isClosed());
+
+                        createNewConnection();
+                        //startElection();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+
+
+
+
+
                 }
 
             }
-        }
-            
+            logClient("za whilem");
 
+
+
+        }
+
+        logClient("koniec");
+        //metodaElction() -> w srodku nowy watek na kolejne polaczenie, wyslanie komunikatu!!
     }
 
 public void startAdmin(){
@@ -150,12 +208,70 @@ public void startAdmin(){
     }
 
 
-    public void startElection(){
-        for(Serwers serwers : _serwersList)
+    public void startElection() throws IOException {
+        for(Serwers serwers : _serwersList) //poporawivcna liste
         {
-            System.out.println(serwers.get_IP() + " " + serwers.get_PORT());
+            Socket clientSerwer1 = new Socket(InetAddress.getByName(serwers.get_IP()), serwers.get_PORT());
+            PrintWriter outSerwer1 =
+                    new PrintWriter(clientSerwer1.getOutputStream(), true);
+            outSerwer1.write(ELECTION);
+            outSerwer1.write(_PRIORITY);
+
+            outSerwer1.close();
+            clientSerwer1.close();
         }
 
+
+
+    }
+
+    public void createNewConnection() {
+
+//        for(int i = 0; i<lista.size(); i++){
+//
+//            try{
+//            clientSerwer = new Socket(InetAddress.getByName(lista.get(i).get_IP()), lista.get(i).get_PORT());
+//            inSerwer =
+//                        new BufferedReader(
+//                                new InputStreamReader(clientSerwer.getInputStream()));
+//            outSerwer =
+//                        new PrintWriter(clientSerwer.getOutputStream(), true);
+//            }
+//            catch (IOException e) {
+//                continue;
+//            }
+//
+//
+//
+//            outSerwer.println(CONNECTION);
+//            outSerwer.println(_PRIORITY);
+//            running = true;
+//            break;
+//
+//        }
+
+
+        for(Serwers s :_serwersList) {
+            try {
+                ///albo sprobowac strorzyc nowe obiekty
+
+                clientSerwer = new Socket(InetAddress.getByName(s.get_IP()), s.get_PORT());
+                inSerwer =
+                        new BufferedReader(
+                                new InputStreamReader(clientSerwer.getInputStream()));
+                outSerwer =
+                        new PrintWriter(clientSerwer.getOutputStream(), true);
+
+                outSerwer.println(CONNECTION);
+                outSerwer.println(_PRIORITY);
+                running = true;
+                break;
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
     }
     
     
@@ -172,9 +288,35 @@ public void startAdmin(){
     public void logClient(int text){
         _loggerArea.append("\n" + text);
     }
+    public void logClient(boolean text){
+        _loggerArea.append("\n" + text);
+    }
 
     public void disconnectClient(){
-        info = DISCONNECT;
+        disconnectFlag = true;
+    }
+
+    private void command(String tmp){
+        for(Serwers s :_serwersList){
+
+
+            try {
+                Socket clientSerwer2 = new Socket(InetAddress.getByName(s.get_IP()), s.get_PORT());
+                PrintWriter outSerwer1 =
+                        new PrintWriter(clientSerwer2.getOutputStream(), true);
+                //dodawanie swojego numeru
+                tmp += _PRIORITY;
+
+                outSerwer1.println(tmp);
+
+                outSerwer1.close();
+                clientSerwer2.close();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            break;
+        }
     }
 
 
