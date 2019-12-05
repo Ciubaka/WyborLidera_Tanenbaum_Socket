@@ -21,7 +21,6 @@ public class ServerGUI {
     private Pattern portPattern;
     private Matcher matcherIP;
     private Matcher matcherPORT;
-    private int intervalTime;
     private JFrame frame;
     private JPanel mainPanel;
     private JButton launch;
@@ -29,7 +28,7 @@ public class ServerGUI {
     private JPanel launchedPanel;
     private JTextField connServerPort;
     private JTextArea callLog;
-    private JTextField intervalField;
+
     private JButton disconnectBtn;
     //private JButton COS;
 
@@ -82,7 +81,7 @@ public class ServerGUI {
     public void launch() {
         connServiceIp = connServiceField.getText();
         connServerPortLabel = connServerPort.getText();
-        intervalTime = Integer.parseInt(intervalField.getText());
+
         if (!validateIp(connServiceIp, connServerPortLabel)) {
             wrongIpAddress();
             return;
@@ -105,6 +104,11 @@ public class ServerGUI {
 
     public void disconnectServer(){
         server.disconnectServer();
+        connServiceField.setEnabled(false);
+        connServerPort.setEnabled(true);
+        launch.setEnabled(true);
+        disconnectBtn.setEnabled(false);
+        launchedPanel.setVisible(true);
     }
 
 
@@ -118,7 +122,7 @@ public class ServerGUI {
     }
 
     private void wrongIpAddress(){
-        JOptionPane.showMessageDialog(frame, "Zły adres IP serwera dołączania.", "Błąd adresu IP",JOptionPane.ERROR_MESSAGE );
+        JOptionPane.showMessageDialog(frame, "Zły adres IP lub port serwera dołączania.", "Błąd adresu lub portu!",JOptionPane.ERROR_MESSAGE );
     }
 
     public void log(String text){

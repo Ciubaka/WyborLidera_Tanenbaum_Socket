@@ -4,8 +4,8 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/AdminServer/AdminServer.iml" filepath="$PROJECT_DIR$/AdminServer/AdminServer.iml" />
       <module fileurl="file://$PROJECT_DIR$/Client/Client.iml" filepath="$PROJECT_DIR$/Client/Client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/RingElection_Tanenbaum_Java_Socket.iml" filepath="$PROJECT_DIR$/RingElection_Tanenbaum_Java_Socket.iml" />
       <module fileurl="file://$PROJECT_DIR$/Server/Server.iml" filepath="$PROJECT_DIR$/Server/Server.iml" />
-      <module fileurl="file://$PROJECT_DIR$/WyborLidera_Tanenbaum_Socket.iml" filepath="$PROJECT_DIR$/WyborLidera_Tanenbaum_Socket.iml" />
     </modules>
   </component>
 </project>

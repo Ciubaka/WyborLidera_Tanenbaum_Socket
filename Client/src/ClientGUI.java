@@ -7,6 +7,7 @@ import java.net.*;
 import java.rmi.RemoteException;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -23,6 +24,9 @@ public class ClientGUI {
                     "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
                     "([01]?\\d\\d?|2[0-4]\\d|25[0-5])$";
     private static final String PORT_PATTERN = "\\d+";
+    private static final String AVAILABLE_PRIORITY_NUMBERS = "^[0-9]$";
+    private Pattern PRIORITYPattern;
+    private Matcher PRIORITYMatcher;
     private static final int ADMIN_PORT = 12345;
     private Pattern ipPattern;
     private Pattern ipPatternServer;
@@ -52,8 +56,8 @@ public class ClientGUI {
     private JFrame frame;
     private ClientManager adminClient;
 
-    private LinkedHashSet<Clients> _clientsListGUI = new LinkedHashSet<>();
-    private LinkedHashSet<Serwers> _serwersList = new LinkedHashSet<>();
+    // private LinkedHashSet<Clients> _clientsListGUI = new LinkedHashSet<>();
+    private LinkedList<Clients> _clientsListGUI = new LinkedList<>();
 
 
     public ClientGUI() throws UnknownHostException {
@@ -61,7 +65,7 @@ public class ClientGUI {
         ipPattern = Pattern.compile(IPADDRESS_PATTERN);
         ipPatternServer = Pattern.compile(IPADDRESS_PATTERN);
         portPattern = Pattern.compile(PORT_PATTERN);
-
+        PRIORITYPattern = Pattern.compile(AVAILABLE_PRIORITY_NUMBERS);
         //Inicjalizacja okna członka
         initLayout();
 
@@ -72,7 +76,7 @@ public class ClientGUI {
     private void initLayout() {
         frame = new JFrame("ClientGUI");
         frame.setContentPane(mainPanel);
-        int width = 650;
+        int width = 850;
         int height = 750;
         frame.setSize(width, height);
         frame.setResizable(false);
@@ -131,25 +135,28 @@ public class ClientGUI {
         int adminPort = Integer.parseInt(adminPortBtn.getText());
         String serwerAddress = serverIpFromClientField.getText();
         int serwerPort = Integer.parseInt(serverPortFromClientField.getText());
-        int clientPriority = Integer.parseInt(clientPriorityField.getText());
+        String clientPriority = clientPriorityField.getText();
 
         /**
          * walidacja wprowadzanych danych
          */
-//        if (!validateIp(adminAddress, String.valueOf(adminPort))) {
-//            wrongIpAddress();
-//            return;
-//        }
-//
-//        if (!validateIp(serwerAddress, String.valueOf(serwerPort))) {
-//            wrongIpAddress();
-//            return;
-//        }
+        if (!validateIp(adminAddress, String.valueOf(adminPort))) {
+            wrongIpAddress();
+            return;
+        }
 
+        if (!validateIp(serwerAddress, String.valueOf(serwerPort))) {
+            wrongIpAddress();
+            return;
+        }
+        if(!validatePriority(clientPriority)){
+            wrongPriorityValue();
+            return;
+        }
 
 
         try {
-            adminClient = new ClientManager(adminAddress, adminPort, serwerAddress, serwerPort, clientPriority, loggerArea);
+            adminClient = new ClientManager(adminAddress, adminPort, serwerAddress, serwerPort, Integer.parseInt(clientPriority), loggerArea);
             adminClient.startAdmin();
             TimeUnit.SECONDS.sleep(1);
             adminClient.startSerwer();
@@ -178,13 +185,25 @@ public class ClientGUI {
 
     private void disconnect() {
         adminClient.disconnectClient();
+        connectBtn.setEnabled(true);
+        disconnectBtn.setEnabled(false);
+        checkMembersListBtn.setEnabled(false);
+        firstElectionBtn.setEnabled(false);
+
+        adminAddressBtn.setEnabled(true);
+        adminPortBtn.setEnabled(false);
+        serverIpFromClientField.setEnabled(true);
+        memberIpField.setEnabled(false);
+        serverPortFromClientField.setEnabled(true);
+        clientPriorityField.setEnabled(true);
     }
 
 
     private void setListOfMembers(Clients leader) {
 
 
-        _clientsListGUI.addAll(adminClient._clientsList);
+        if(checkList())
+        _clientsListGUI.addAll(adminClient.getListOfClients());
 
         int poRRRT;
         String adRRRes;
@@ -241,82 +260,98 @@ public class ClientGUI {
                 ipsPanel.add(label);
             }
 
-            }
-            membersPanel.add(ipsPanel);
-            membersPanel.getParent().invalidate();
-            membersPanel.getParent().validate();
-
         }
+        membersPanel.add(ipsPanel);
+        membersPanel.getParent().invalidate();
+        membersPanel.getParent().validate();
 
+        //_clientsListGUI.removeAll();
 
-        private void firstElection () {
-            LinkedHashSet<Clients> _clientsListGUI222 = new LinkedHashSet<>();
-            _clientsListGUI222.addAll(adminClient.getListOfClients());
-
-            String adresLidera = "";
-            int portLidera = 0;
-            int prioryrtetLidera = 0;
-
-            if (_clientsListGUI222.size() > 0) {
-                if (_clientsListGUI222.size() == 1) {
-                    portLidera = _clientsListGUI222.iterator().next().get_port();
-                    adresLidera = _clientsListGUI222.iterator().next().get_ip();
-                    prioryrtetLidera = _clientsListGUI222.iterator().next().get_priority();
-                } else {
-                    for (Clients lista : _clientsListGUI222) {
-                        if (lista.get_priority() > prioryrtetLidera) {
-                            prioryrtetLidera = lista.get_priority();
-                            portLidera = lista.get_port();
-                            adresLidera = lista.get_ip();
-                            continue;
-                        }
-                        System.out.println("Mniejsze");
-                    }
-                }
-            }
-            Clients leader = new Clients(adresLidera, portLidera, prioryrtetLidera);
-
-
-            String iplala = getAddressThisMachine();
-            if (leader.get_priority() == Integer.parseInt(clientPriorityField.getText()) && leader.get_ip().equals(iplala)) {
-                iAmLeader();
-            } else {
-                iAmNotLeader();
-                //wyslij dalej do innych membersow
-                //        //Map<Integer, String> daneDoPolaczenGUI = new TreeMap<>();
-                //
-            }
-            setListOfMembers(leader);
-
-        }
-
-
-        private String getAddressThisMachine () {
-            String iplala = null;
-            try (final DatagramSocket socket = new DatagramSocket()) {
-                socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
-                iplala = socket.getLocalAddress().getHostAddress();
-            } catch (SocketException | UnknownHostException e) {
-                e.printStackTrace();
-            }
-            return iplala;
-
-        }
-
-        public void iAmLeader () {
-            leaderPanel.setVisible(true);
-        }
-
-        public void iAmNotLeader () {
-            leaderPanel.setVisible(false);
-        }
-
-    public boolean validateIp(final String ip) {
-        matcher = ipPattern.matcher(ip);
-        return matcher.matches();
     }
 
-    public boolean validateIp(final String ip, final String port){
+
+    private void firstElection() {
+        LinkedList<Clients> _clientsListGUI222 = new LinkedList<>();
+        _clientsListGUI222.addAll(adminClient.getListOfClients());
+
+        String adresLidera = "";
+        int portLidera = 0;
+        int prioryrtetLidera = 0;
+
+        if (_clientsListGUI222.size() > 0) {
+            if (_clientsListGUI222.size() == 1) {
+                portLidera = _clientsListGUI222.iterator().next().get_port();
+                adresLidera = _clientsListGUI222.iterator().next().get_ip();
+                prioryrtetLidera = _clientsListGUI222.iterator().next().get_priority();
+            } else {
+                for (Clients lista : _clientsListGUI222) {
+                    if (lista.get_priority() > prioryrtetLidera) {
+                        prioryrtetLidera = lista.get_priority();
+                        portLidera = lista.get_port();
+                        adresLidera = lista.get_ip();
+                        continue;
+                    }
+                    System.out.println("Mniejsze");
+                }
+            }
+        }
+        Clients leader = new Clients(adresLidera, portLidera, prioryrtetLidera);
+
+
+        String iplala = getAddressThisMachine();
+        if (leader.get_priority() == Integer.parseInt(clientPriorityField.getText()) && leader.get_ip().equals(iplala)) {
+            iAmLeader();
+        } else {
+            iAmNotLeader();
+            //wyslij dalej do innych membersow
+            //        //Map<Integer, String> daneDoPolaczenGUI = new TreeMap<>();
+            //
+        }
+        setListOfMembers(leader);
+
+    }
+
+
+    private String getAddressThisMachine() {
+        String iplala = null;
+        try (final DatagramSocket socket = new DatagramSocket()) {
+            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+            iplala = socket.getLocalAddress().getHostAddress();
+        } catch (SocketException | UnknownHostException e) {
+            e.printStackTrace();
+        }
+        return iplala;
+
+    }
+
+    public boolean checkList() {
+        if (_clientsListGUI != null) {
+            for (Clients klienci : adminClient.getListOfClients()) {
+                for (Clients cl : _clientsListGUI) {
+                    if (cl.get_ip() == klienci.get_ip()
+                            || cl.get_port() == klienci.get_port()
+                                || cl.get_priority() == klienci.get_priority())
+                        return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public void iAmLeader() {
+        leaderPanel.setVisible(true);
+    }
+
+    public void iAmNotLeader() {
+        leaderPanel.setVisible(false);
+    }
+
+    public boolean validatePriority(final String ip) {
+        PRIORITYMatcher = PRIORITYPattern.matcher(ip);
+        return PRIORITYMatcher.matches();
+    }
+
+    public boolean validateIp(final String ip, final String port) {
 
         matcherIP = ipPattern.matcher(ip);
         matcherPORT = portPattern.matcher(port);
@@ -325,12 +360,12 @@ public class ClientGUI {
     }
 
 
-    public void priorityExists(){
-        JOptionPane.showMessageDialog(frame, "Wskazany priorytet jest już wykorzystywany!", "Błąd wartości priorytetu",JOptionPane.ERROR_MESSAGE );
+    public void priorityExists() {
+        JOptionPane.showMessageDialog(frame, "Wskazany priorytet jest już wykorzystywany!", "Błąd wartości priorytetu", JOptionPane.ERROR_MESSAGE);
     }
 
-    public void wrongPriorityValue(){
-        JOptionPane.showMessageDialog(frame, "Błędna wartość priorytetu!", "Błąd wartości priorytetu",JOptionPane.ERROR_MESSAGE );
+    public void wrongPriorityValue() {
+        JOptionPane.showMessageDialog(frame, "Błędna wartość priorytetu!", "Błąd wartości priorytetu", JOptionPane.ERROR_MESSAGE);
     }
 
     public void wrongIpAddress() {
@@ -338,6 +373,4 @@ public class ClientGUI {
     }
 
 
-
-
-    }
+}

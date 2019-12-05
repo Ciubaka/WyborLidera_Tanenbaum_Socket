@@ -1,6 +1,24 @@
 public class SharedCommand {
 
     private String zmienna = null;
+    private boolean czyNowy = false;
+
+    public boolean isCzyNowy() {
+        boolean tmp = czyNowy;
+        synchronized (this) {
+            czyNowy=false;
+        }
+        return tmp;
+
+    }
+
+    public void setCzyNowy(boolean czyNowy) {
+        synchronized (this) {
+            this.czyNowy = czyNowy;
+        }
+    }
+
+
 
 
 
@@ -23,8 +41,6 @@ public class SharedCommand {
         synchronized (this){
             zmienna = string;
         }
-
-
 
     }
 

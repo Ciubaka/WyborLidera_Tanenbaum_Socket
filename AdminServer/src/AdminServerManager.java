@@ -15,6 +15,7 @@ public class AdminServerManager implements Runnable, Serializable{
     private ServerSocket _serverSocket;
     private JTextArea _adminlog;
     private InetAddress _IP_ADMIN;
+    private int _initialNumberOfClients;
     private LinkedHashSet<Clients> _clientsList = new LinkedHashSet<>();
     private LinkedHashSet<Serwers> _serwersList = new LinkedHashSet<>();
 
@@ -27,11 +28,12 @@ public class AdminServerManager implements Runnable, Serializable{
     private Thread thread;
 
 
-    public AdminServerManager(String IP_ADMIN, int PORT_ADMIN, JTextArea adminlog) throws IOException {
+    public AdminServerManager(String IP_ADMIN, int PORT_ADMIN, JTextArea adminlog, int initialNumberOfClients) throws IOException {
         _IP_ADMIN = InetAddress.getByName(IP_ADMIN);
         _serverSocket = new ServerSocket(PORT_ADMIN, 5, _IP_ADMIN);
         _adminlog = adminlog;
         logServer("Odpalony serwer, adres: " + _serverSocket.getInetAddress().getHostAddress() + ", na porcie: "+ _serverSocket.getLocalPort());
+        _initialNumberOfClients = initialNumberOfClients;
     }
 
 
@@ -59,11 +61,12 @@ public class AdminServerManager implements Runnable, Serializable{
                 /**
                  * ZAPIS DANYCH O KLIENTACH, SERWERACH I SOCKETACH DO LIST
                  */
-                _serwersList.add(new Serwers(ipServer, portServer));
-               _clientsList.add(new Clients(client.getInetAddress().getHostAddress(), client.getPort(), priority));
-               ////////////_clientsList1.add(new Clients(client.getInetAddress().getHostAddress(), client.getPort(), priority));
+                //_serwersList.add(new Serwers(ipServer, portServer));
+                _serwersList1.add(new Serwers(ipServer, portServer));
+               ///////_clientsList.add(new Clients(client.getInetAddress().getHostAddress(), client.getPort(), priority));
+               _clientsList1.add(new Clients(client.getInetAddress().getHostAddress(), client.getPort(), priority));
                _clients.add(client);
-                logServer("Liczba serwerów: " + _serwersList.size() + "\nLiczba klientów: " + _clientsList.size() + "\nLiczba socketów: " + _clients.size() );
+                logServer("Liczba serwerów: " + _serwersList1.size() + "\nLiczba klientów: " + _clientsList1.size() + "\nLiczba socketów: " + _clients.size() );
 
                 ClientHandler clientHandler = new ClientHandler(client);
                 _clientHandlers.add(clientHandler);
@@ -73,10 +76,13 @@ public class AdminServerManager implements Runnable, Serializable{
                 /**
                  * OGARNAC TUTAJ ZEBY DO KAZDEGO SIE WYSYLALO A NIE RAZ PO OKRESLONEJ LICZBIE DOLACZONYCH KLIENTOW!!!!
                  */
-                if(_clientHandlers.size() > 0) {
+                int numberInList = 0;
+                if(_clientHandlers.size() == _initialNumberOfClients) {
                     for (ClientHandler cl : _clientHandlers) {
-                        cl.outObjClient.writeObject(_serwersList);
-                        cl.outObjClient.writeObject(_clientsList);
+                        cl.outObjClient.writeObject(_serwersList1);
+                        cl.outObjClient.writeObject(_clientsList1);
+                        cl.outObjClient.writeObject(numberInList);
+                        numberInList++;
                         cl.outObjClient.flush();
                         Thread.currentThread();
                         Thread.sleep(1 * 1000);
